@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 
+const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8088').replace(/\/$/, '')
+
 // Define the shape of our data
 interface CpuSpec {
   socket: string
@@ -24,7 +26,7 @@ const loading = ref(true)
 // Fetch data from Django when the page loads
 onMounted(async () => {
   try {
-    const response = await fetch('http://localhost:8088/api/cpus/')
+    const response = await fetch(`${API_BASE_URL}/api/cpus/`)
     cpus.value = await response.json()
   } catch (error) {
     console.error('Error fetching CPUs:', error)

@@ -31,6 +31,8 @@ ENV/
 *.db
 instance/
 uploads/
+exports/
+staticfiles/
 
 # Local tooling and OS files
 .DS_Store
