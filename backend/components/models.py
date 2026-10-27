@@ -135,12 +135,12 @@ class CoolerSpec(models.Model):
     )
 
     # Air cooler fitment
-    height_mm = models.PositiveIntegerField(
+    height_mm = models.FloatField(
         null=True,
         blank=True,
         help_text="Air cooler height in mm. Leave empty for liquid coolers.",
     )
-    ram_clearance_mm = models.PositiveIntegerField(
+    ram_clearance_mm = models.FloatField(
         null=True,
         blank=True,
         help_text="Clearance under the heatsink for memory modules, in mm.",
@@ -152,13 +152,13 @@ class CoolerSpec(models.Model):
         blank=True,
         help_text="Radiator size in mm, e.g. 240, 280, 360. Leave empty for air coolers.",
     )
-    radiator_thickness_mm = models.PositiveIntegerField(null=True, blank=True)
-    radiator_length_mm = models.PositiveIntegerField(null=True, blank=True)
-    radiator_width_mm = models.PositiveIntegerField(null=True, blank=True)
+    radiator_thickness_mm = models.FloatField(null=True, blank=True)
+    radiator_length_mm = models.FloatField(null=True, blank=True)
+    radiator_width_mm = models.FloatField(null=True, blank=True)
 
     # Fans and general specs
     fan_count = models.PositiveIntegerField(default=1)
-    fan_size_mm = models.PositiveIntegerField(null=True, blank=True)
+    fan_size_mm = models.FloatField(null=True, blank=True)
     noise_db_max = models.FloatField(null=True, blank=True, help_text="Maximum noise level in dBA.")
     weight_g = models.PositiveIntegerField(null=True, blank=True)
     power_connector = models.CharField(

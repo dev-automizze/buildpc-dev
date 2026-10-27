@@ -166,6 +166,19 @@ class CoolerImportTests(TestCase):
         self.assertEqual(spec.radiator_thickness_mm, 30)
         self.assertEqual(spec.power_connector, "SATA")
 
+    def test_accepts_decimal_dimensions(self):
+        rows = read_rows(
+            COOLER_HEADER,
+            'COOL-DECIMAL,Brand,Tower,79.99,Air,"AM5",180,159.4,32.5,,,,,1,120,22.0,900,4-pin',
+        )
+
+        success, errors = import_csv(rows, ComponentCategory.COOLER)
+
+        self.assertEqual((success, errors), (1, []))
+        spec = CoolerSpec.objects.get()
+        self.assertEqual(spec.height_mm, 159.4)
+        self.assertEqual(spec.ram_clearance_mm, 32.5)
+
     def test_cooler_requires_at_least_one_socket(self):
         rows = read_rows(
             COOLER_HEADER,

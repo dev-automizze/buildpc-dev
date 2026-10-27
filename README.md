@@ -19,6 +19,9 @@ on secrets or a database that only exists on one machine.
 | Node.js | 20+ | Only needed for the frontend |
 | Git | any recent | |
 
+Ubuntu 24.04 includes Python 3.12. Ubuntu 22.04 ships Python 3.10; install
+Python 3.12 with `pyenv` or the deadsnakes PPA before running setup.
+
 ## First setup on a new machine
 
 ```bash
@@ -84,9 +87,9 @@ the backend machine's LAN address, for example `http://192.168.1.50:8088`.
 ## Running
 
 ```bash
-make backend                 # http://127.0.0.1:8088
-make backend HOST=0.0.0.0    # reachable from other machines on the LAN
-make frontend                # http://localhost:5173
+make backend       # http://127.0.0.1:8088
+make backend-lan   # http://<this-machine-ip>:8088, reachable on the LAN
+make frontend      # http://localhost:5173
 ```
 
 For LAN access, also allow the host/IP in `backend/.env`:
@@ -94,8 +97,49 @@ For LAN access, also allow the host/IP in `backend/.env`:
 ```dotenv
 DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,[::1],192.168.1.50
 CORS_ALLOWED_ORIGINS=http://192.168.1.50:5173
-CSRF_TRUSTED_ORIGINS=http://192.168.1.50:5173
+CSRF_TRUSTED_ORIGINS=http://192.168.1.50:8088,http://192.168.1.50:5173
 ```
+
+## Fresh home server setup (Ubuntu)
+
+Use this when you have deleted the old directory and want a clean clone.
+
+**On the work computer**, copy the configured environment file over SSH:
+
+```bash
+scp backend/.env your-user@HOME_SERVER_IP:/tmp/buildpc.env
+```
+
+**On the home server:**
+
+```bash
+cd ~
+rm -rf buildpc-dev
+git clone https://github.com/dev-automizze/buildpc-dev.git
+cd buildpc-dev
+
+cp /tmp/buildpc.env backend/.env
+chmod 600 backend/.env
+rm /tmp/buildpc.env
+
+# Add the server's LAN IP so the admin/API is reachable from your browser.
+nano backend/.env
+#   DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,[::1],192.168.1.50
+
+./scripts/setup.sh --backend-only
+make test
+make backend-lan
+```
+
+Then open `http://192.168.1.50:8088/admin/` (replace with the server IP).
+
+The setup output prints the database engine and component count. If you copied
+the shared `.env`, you should see `engine: postgresql` and your existing
+components. If you see `engine: sqlite3` with `components: 0`, the `.env` was
+not copied correctly.
+
+No `createsuperuser` is needed when using the shared PostgreSQL database — the
+existing admin account is there. Only create one for a fresh SQLite database.
 
 ## Moving hardware data between machines
 

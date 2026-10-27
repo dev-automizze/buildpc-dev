@@ -55,7 +55,12 @@ reported without discarding the good rows.
 
 Column lists are shown on the upload page. A starter file is available at
 `sample_data/coolers_template.csv` — the rows in it are placeholders, so verify
-specs before using them as real data.
+specs before using them as real data. `sample_data/cooler.csv` is the 28-cooler
+import used during development and can be re-imported with:
+
+```bash
+./venv/bin/python manage.py import_components sample_data/cooler.csv --type Cooler
+```
 
 ### Cooler columns
 

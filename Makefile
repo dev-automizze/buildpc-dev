@@ -1,4 +1,4 @@
-.PHONY: setup backend frontend test migrate makemigrations check export import
+.PHONY: setup backend backend-lan frontend test migrate makemigrations check export import
 
 HOST ?= 127.0.0.1
 
@@ -7,6 +7,9 @@ setup:
 
 backend:
 	cd backend && ./venv/bin/python manage.py runserver $(HOST):8088
+
+backend-lan:
+	cd backend && ./venv/bin/python manage.py runserver 0.0.0.0:8088
 
 frontend:
 	cd frontend && npm run dev

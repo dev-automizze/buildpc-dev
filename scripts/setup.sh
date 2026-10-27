@@ -23,6 +23,13 @@ if ! command -v python3 >/dev/null 2>&1; then
   exit 1
 fi
 
+if ! python3 -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 12) else 1)'; then
+  echo "Python 3.12+ is required. Found: $(python3 --version 2>&1)" >&2
+  echo "Ubuntu 24.04 ships Python 3.12." >&2
+  echo "On Ubuntu 22.04, install Python 3.12 via pyenv or the deadsnakes PPA." >&2
+  exit 1
+fi
+
 if [[ ! -d venv ]]; then
   echo "Creating virtual environment..."
   if ! python3 -m venv venv; then
@@ -42,6 +49,18 @@ fi
 
 ./venv/bin/python manage.py migrate
 ./venv/bin/python manage.py check
+
+echo "==> Database"
+./venv/bin/python manage.py shell --verbosity 0 -c "
+from django.conf import settings
+from components.models import Component
+default = settings.DATABASES['default']
+engine = default['ENGINE'].rsplit('.', 1)[-1]
+print('engine:', engine)
+if engine == 'postgresql':
+    print('host:', default.get('HOST'))
+print('components:', Component.objects.count())
+"
 echo "Backend ready."
 
 if [[ "$BACKEND_ONLY" -eq 0 ]]; then
