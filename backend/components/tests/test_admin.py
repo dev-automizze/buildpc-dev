@@ -3,7 +3,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 
-from components.models import CoolerSpec, CpuSpec
+from components.models import CoolerSpec, CpuSpec, RamSpec
 from components.tests.factories import make_cpu
 
 COOLER_CSV = (
@@ -18,6 +18,14 @@ CPU_CSV = (
     "mpn,brand,model,msrp,socket,coreCount,threadCount,baseClockGhz,"
     "boostClockGhz,tdpWatts,maxPowerWatts,hasIntegratedGpu,includedCooler\n"
     "CPU-ADMIN-1,AMD,Ryzen 5 7600X,299.00,AM5,6,12,4.7,5.3,105,142,true,false\n"
+)
+
+
+RAM_CSV = (
+    "mpn,brand,model,msrp,memoryType,formFactor,capacityGb,moduleCount,speedMts,"
+    "casLatency,voltage,rank,ecc,registered,heightMm,hasHeatspreader,xmpExpo\n"
+    "RAM-ADMIN-1,Corsair,Vengeance,89.99,DDR5,DIMM,16,2,6000,30,1.35,Dual,"
+    "false,false,35,true,EXPO\n"
 )
 
 
@@ -73,3 +81,13 @@ class AdminCsvUploadTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertFalse(CpuSpec.objects.exists())
+
+
+    def test_uploading_ram_csv_creates_spec(self):
+        response = self._upload("ram", "RAM", RAM_CSV)
+
+        self.assertEqual(response.status_code, 302)
+        spec = RamSpec.objects.get()
+        self.assertEqual(spec.component.mpn, "RAM-ADMIN-1")
+        self.assertEqual(spec.total_capacity_gb, 32)
+        self.assertEqual(spec.first_word_latency_ns, 10.0)

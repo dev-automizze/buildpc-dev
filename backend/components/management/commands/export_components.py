@@ -5,7 +5,7 @@ import csv
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
-from components.models import Cooler, Cpu, Motherboard
+from components.models import Cooler, Cpu, Motherboard, Ram
 
 CPU_FIELDS = [
     "mpn", "brand", "model", "msrp", "socket", "coreCount", "threadCount",
@@ -24,6 +24,12 @@ COOLER_FIELDS = [
     "tdpRatingWatts", "heightMm", "ramClearanceMm", "radiatorSizeMm",
     "radiatorThicknessMm", "radiatorLengthMm", "radiatorWidthMm", "fanCount",
     "fanSizeMm", "noiseDbMax", "weightG", "powerConnector",
+]
+
+RAM_FIELDS = [
+    "mpn", "brand", "model", "msrp", "memoryType", "formFactor", "capacityGb",
+    "moduleCount", "speedMts", "casLatency", "voltage", "rank", "ecc",
+    "registered", "heightMm", "hasHeatspreader", "xmpExpo",
 ]
 
 
@@ -62,11 +68,13 @@ class Command(BaseCommand):
         cooler_qs = Cooler.objects.select_related("cooler_spec").prefetch_related(
             "cooler_spec__supported_sockets"
         )
+        ram_qs = Ram.objects.select_related("ram_spec")
 
         missing_specs = {
             "CPU": Cpu.objects.filter(cpu_spec__isnull=True).count(),
             "Motherboard": Motherboard.objects.filter(motherboard_spec__isnull=True).count(),
             "Cooler": Cooler.objects.filter(cooler_spec__isnull=True).count(),
+            "RAM": Ram.objects.filter(ram_spec__isnull=True).count(),
         }
         for category, count in missing_specs.items():
             if count:
@@ -142,12 +150,36 @@ class Command(BaseCommand):
             for c in cooler_qs.filter(cooler_spec__isnull=False)
         ]
 
+        ram = [
+            {
+                "mpn": r.mpn,
+                "brand": r.brand,
+                "model": r.model,
+                "msrp": r.msrp,
+                "memoryType": r.ram_spec.memory_type,
+                "formFactor": r.ram_spec.form_factor,
+                "capacityGb": r.ram_spec.capacity_gb,
+                "moduleCount": r.ram_spec.module_count,
+                "speedMts": r.ram_spec.speed_mts,
+                "casLatency": _value(r.ram_spec.cas_latency),
+                "voltage": _value(r.ram_spec.voltage),
+                "rank": r.ram_spec.rank,
+                "ecc": _bool(r.ram_spec.ecc),
+                "registered": _bool(r.ram_spec.registered),
+                "heightMm": _value(r.ram_spec.height_mm),
+                "hasHeatspreader": _bool(r.ram_spec.has_heatspreader),
+                "xmpExpo": r.ram_spec.xmp_expo,
+            }
+            for r in ram_qs.filter(ram_spec__isnull=False)
+        ]
+
         counts = {
             "cpus.csv": _write(output / "cpus.csv", CPU_FIELDS, cpus),
             "motherboards.csv": _write(
                 output / "motherboards.csv", MOTHERBOARD_FIELDS, motherboards
             ),
             "coolers.csv": _write(output / "coolers.csv", COOLER_FIELDS, coolers),
+            "ram.csv": _write(output / "ram.csv", RAM_FIELDS, ram),
         }
 
         for name, count in counts.items():

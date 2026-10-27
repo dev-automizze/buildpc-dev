@@ -1,0 +1,3 @@
+mpn,brand,model,msrp,memoryType,formFactor,capacityGb,moduleCount,speedMts,casLatency,voltage,rank,ecc,registered,heightMm,hasHeatspreader,xmpExpo
+RAM-EXAMPLE-1,ExampleBrand,Example 32GB (2x16GB) DDR5-6000 CL30,99.99,DDR5,DIMM,16,2,6000,30,1.35,Single,false,false,35,true,XMP 3.0
+RAM-EXAMPLE-2,ExampleBrand,Example 16GB (1x16GB) DDR4-3200 CL22,39.99,DDR4,DIMM,16,1,3200,22,1.2,Single,false,false,31.25,false,

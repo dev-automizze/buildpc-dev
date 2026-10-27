@@ -10,6 +10,8 @@ from components.models import (
     CpuSpec,
     Motherboard,
     MotherboardSpec,
+    Ram,
+    RamSpec,
     Socket,
 )
 
@@ -79,10 +81,33 @@ def make_cooler(mpn="COOL-TEST-1", socket_names=("AM4", "AM5"), **overrides):
     return component
 
 
+def make_ram(mpn="RAM-TEST-1", **overrides):
+    component = Component.objects.create(
+        mpn=mpn,
+        brand=overrides.pop("brand", "Corsair"),
+        model=overrides.pop("model", "Vengeance Test"),
+        msrp=overrides.pop("msrp", Decimal("89.99")),
+        category=ComponentCategory.RAM,
+    )
+    RamSpec.objects.create(
+        component=component,
+        memory_type=overrides.pop("memory_type", "DDR5"),
+        form_factor=overrides.pop("form_factor", "DIMM"),
+        capacity_gb=overrides.pop("capacity_gb", 16),
+        module_count=overrides.pop("module_count", 2),
+        speed_mts=overrides.pop("speed_mts", 6000),
+        cas_latency=overrides.pop("cas_latency", 30),
+        height_mm=overrides.pop("height_mm", 35),
+        **overrides,
+    )
+    return component
+
+
 def proxy_counts():
     return {
         "cpu": Cpu.objects.count(),
         "motherboard": Motherboard.objects.count(),
         "cooler": Cooler.objects.count(),
+        "ram": Ram.objects.count(),
         "all": Component.objects.count(),
     }

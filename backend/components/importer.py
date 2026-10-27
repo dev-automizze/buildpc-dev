@@ -15,9 +15,12 @@ from .models import (
     CoolerSpec,
     CoolerType,
     CpuSpec,
+    MemoryFormFactor,
+    MemoryRank,
     MemoryType,
     MotherboardFormFactor,
     MotherboardSpec,
+    RamSpec,
     Socket,
 )
 from .sockets import normalize_socket_name
@@ -242,10 +245,90 @@ def _import_cooler(row):
     spec.supported_sockets.set(supported_sockets)
 
 
+def _normalize_memory_form_factor(raw_value):
+    value = str(raw_value or "").strip().lower().replace("_", "-").replace(" ", "-")
+    aliases = {
+        "dimm": MemoryFormFactor.DIMM,
+        "udimm": MemoryFormFactor.DIMM,
+        "desktop": MemoryFormFactor.DIMM,
+        "so-dimm": MemoryFormFactor.SO_DIMM,
+        "sodimm": MemoryFormFactor.SO_DIMM,
+        "laptop": MemoryFormFactor.SO_DIMM,
+    }
+    normalized = aliases.get(value)
+    if not normalized:
+        valid = ", ".join(choice.label for choice in MemoryFormFactor)
+        raise ImportRowError(f"'formFactor' must be one of: {valid}; got '{raw_value}'")
+    return normalized
+
+
+def _normalize_rank(raw_value):
+    value = str(raw_value or "").strip().lower()
+    if not value:
+        return ""
+    aliases = {
+        "single": MemoryRank.SINGLE,
+        "1": MemoryRank.SINGLE,
+        "1r": MemoryRank.SINGLE,
+        "single rank": MemoryRank.SINGLE,
+        "dual": MemoryRank.DUAL,
+        "2": MemoryRank.DUAL,
+        "2r": MemoryRank.DUAL,
+        "dual rank": MemoryRank.DUAL,
+    }
+    normalized = aliases.get(value)
+    if not normalized:
+        valid = ", ".join(choice.label for choice in MemoryRank)
+        raise ImportRowError(f"'rank' must be one of: {valid}; got '{raw_value}'")
+    return normalized
+
+
+def _import_ram(row):
+    component = _component(row, ComponentCategory.RAM)
+
+    capacity_gb = _parse_int(row, "capacityGb")
+    module_count = _parse_int(row, "moduleCount", required=False) or 1
+    speed_mts = _parse_int(row, "speedMts")
+
+    if capacity_gb <= 0:
+        raise ImportRowError("'capacityGb' must be greater than zero")
+    if module_count <= 0:
+        raise ImportRowError("'moduleCount' must be greater than zero")
+    if speed_mts <= 0:
+        raise ImportRowError("'speedMts' must be greater than zero")
+
+    ecc = _parse_bool(row, "ecc")
+    registered = _parse_bool(row, "registered")
+    if registered and not ecc:
+        raise ImportRowError("'registered' memory must also set ecc=true")
+
+    RamSpec.objects.update_or_create(
+        component=component,
+        defaults={
+            "memory_type": _normalize_memory_type(_required(row, "memoryType")),
+            "form_factor": _normalize_memory_form_factor(
+                _value(row, "formFactor") or MemoryFormFactor.DIMM
+            ),
+            "capacity_gb": capacity_gb,
+            "module_count": module_count,
+            "speed_mts": speed_mts,
+            "cas_latency": _parse_int(row, "casLatency", required=False),
+            "voltage": _parse_float(row, "voltage"),
+            "rank": _normalize_rank(_value(row, "rank")),
+            "ecc": ecc,
+            "registered": registered,
+            "height_mm": _parse_float(row, "heightMm"),
+            "has_heatspreader": _parse_bool(row, "hasHeatspreader"),
+            "xmp_expo": _value(row, "xmpExpo"),
+        },
+    )
+
+
 _IMPORTERS = {
     ComponentCategory.CPU: _import_cpu,
     ComponentCategory.MOTHERBOARD: _import_motherboard,
     ComponentCategory.COOLER: _import_cooler,
+    ComponentCategory.RAM: _import_ram,
 }
 
 

@@ -17,6 +17,7 @@ class ComponentCategory(models.TextChoices):
     CPU = "CPU", "CPU"
     MOTHERBOARD = "Motherboard", "Motherboard"
     COOLER = "Cooler", "Cooler"
+    RAM = "RAM", "RAM"
 
 
 class CoolerType(models.TextChoices):
@@ -37,6 +38,16 @@ class MotherboardFormFactor(models.TextChoices):
 class MemoryType(models.TextChoices):
     DDR4 = "DDR4", "DDR4"
     DDR5 = "DDR5", "DDR5"
+
+
+class MemoryFormFactor(models.TextChoices):
+    DIMM = "DIMM", "DIMM (desktop)"
+    SO_DIMM = "SO-DIMM", "SO-DIMM (laptop / mini PC)"
+
+
+class MemoryRank(models.TextChoices):
+    SINGLE = "Single", "Single rank"
+    DUAL = "Dual", "Dual rank"
 
 
 class CategoryManager(models.Manager):
@@ -172,7 +183,82 @@ class CoolerSpec(models.Model):
         return f"Specs for {self.component.model}"
 
 
-# Proxy Models for Admin Menu Separation
+class RamSpec(models.Model):
+    component = models.OneToOneField(Component, on_delete=models.CASCADE, related_name="ram_spec")
+
+    # --- Compatibility-critical ---
+    memory_type = models.CharField(
+        max_length=10,
+        choices=MemoryType.choices,
+        help_text="Must match the motherboard memory type: DDR4 or DDR5.",
+    )
+    form_factor = models.CharField(
+        max_length=10,
+        choices=MemoryFormFactor.choices,
+        default=MemoryFormFactor.DIMM,
+        help_text="DIMM for desktops, SO-DIMM for laptops/mini PCs.",
+    )
+    capacity_gb = models.PositiveIntegerField(help_text="Capacity of one module in GB.")
+    module_count = models.PositiveIntegerField(
+        default=1,
+        help_text="Modules in the kit, e.g. 2 for a 2x16 GB kit.",
+    )
+    speed_mts = models.PositiveIntegerField(
+        help_text="Rated speed in MT/s (often written MHz), e.g. 6000."
+    )
+
+    # --- Performance / platform details ---
+    cas_latency = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="CAS latency (CL). Used to compute first-word latency.",
+    )
+    voltage = models.FloatField(null=True, blank=True, help_text="Module voltage, e.g. 1.35 for DDR4, 1.1 for DDR5.")
+    rank = models.CharField(
+        max_length=10,
+        choices=MemoryRank.choices,
+        blank=True,
+        default="",
+        help_text="Single or dual rank. Dual-rank kits may not reach top speed in 4-slot boards.",
+    )
+    ecc = models.BooleanField(default=False, help_text="Error-correcting memory.")
+    registered = models.BooleanField(
+        default=False,
+        help_text="Registered (RDIMM/LRDIMM) server memory. Not compatible with consumer boards.",
+    )
+
+    # --- Physical fitment ---
+    height_mm = models.FloatField(
+        null=True,
+        blank=True,
+        help_text="Module height in mm including heatspreader. Compared with cooler RAM clearance.",
+    )
+    has_heatspreader = models.BooleanField(default=False)
+    xmp_expo = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        help_text="Overclock profile: XMP, XMP 3.0, EXPO, or blank.",
+    )
+
+    class Meta:
+        verbose_name = "RAM spec"
+        verbose_name_plural = "RAM specs"
+
+    @property
+    def total_capacity_gb(self):
+        """Total kit capacity, which is what the board's max memory applies to."""
+        return self.capacity_gb * self.module_count
+
+    @property
+    def first_word_latency_ns(self):
+        """Real latency in ns; lower is better and comparable across speeds."""
+        if not self.cas_latency or not self.speed_mts:
+            return None
+        return round(self.cas_latency * 2000 / self.speed_mts, 1)
+
+    def __str__(self):
+        return f"Specs for {self.component.model}"
 class Cpu(Component):
     objects = CategoryManager(ComponentCategory.CPU)
 
@@ -198,3 +284,12 @@ class Cooler(Component):
         proxy = True
         verbose_name = "Cooler"
         verbose_name_plural = "Coolers"
+
+
+class Ram(Component):
+    objects = CategoryManager(ComponentCategory.RAM)
+
+    class Meta:
+        proxy = True
+        verbose_name = "RAM"
+        verbose_name_plural = "RAM"

@@ -6,6 +6,7 @@ from components.tests.factories import (
     make_cooler,
     make_cpu,
     make_motherboard,
+    make_ram,
     proxy_counts,
 )
 
@@ -39,11 +40,12 @@ class ProxyManagerTests(TestCase):
         self.cpu = make_cpu()
         self.motherboard = make_motherboard()
         self.cooler = make_cooler()
+        self.ram = make_ram()
 
     def test_each_proxy_only_returns_its_own_category(self):
         self.assertEqual(
             proxy_counts(),
-            {"cpu": 1, "motherboard": 1, "cooler": 1, "all": 3},
+            {"cpu": 1, "motherboard": 1, "cooler": 1, "ram": 1, "all": 4},
         )
 
     def test_proxy_manager_filters_lookups(self):
@@ -89,3 +91,24 @@ class CoolerModelTests(TestCase):
         self.assertIsNone(spec.height_mm)
         self.assertEqual(spec.radiator_size_mm, 360)
         self.assertEqual(CoolerSpec.objects.count(), 1)
+
+
+class RamSpecTests(TestCase):
+    def test_kit_capacity_is_per_module_times_count(self):
+        spec = make_ram(capacity_gb=16, module_count=2).ram_spec
+        self.assertEqual(spec.total_capacity_gb, 32)
+
+        single = make_ram(mpn="RAM-SINGLE-1", capacity_gb=32, module_count=1).ram_spec
+        self.assertEqual(single.total_capacity_gb, 32)
+
+    def test_first_word_latency_compares_speed_and_cas(self):
+        ddr5 = make_ram(cas_latency=30, speed_mts=6000).ram_spec
+        slow = make_ram(mpn="RAM-SLOW-1", cas_latency=40, speed_mts=4800).ram_spec
+
+        self.assertEqual(ddr5.first_word_latency_ns, 10.0)
+        self.assertEqual(slow.first_word_latency_ns, 16.7)
+        self.assertLess(ddr5.first_word_latency_ns, slow.first_word_latency_ns)
+
+    def test_latency_is_none_without_cas_latency(self):
+        spec = make_ram(cas_latency=None).ram_spec
+        self.assertIsNone(spec.first_word_latency_ns)

@@ -4,8 +4,15 @@ from io import StringIO
 from django.core.management import call_command
 from django.test import TestCase
 
-from components.models import Component, ComponentCategory, Cooler, Cpu, Motherboard
-from components.tests.factories import make_cooler, make_cpu, make_motherboard
+from components.models import (
+    Component,
+    ComponentCategory,
+    Cooler,
+    Cpu,
+    Motherboard,
+    Ram,
+)
+from components.tests.factories import make_cooler, make_cpu, make_motherboard, make_ram
 
 
 class DataPortabilityCommandTests(TestCase):
@@ -22,6 +29,17 @@ class DataPortabilityCommandTests(TestCase):
             radiator_size_mm=360,
             height_mm=None,
             cooler_type="AIO",
+        )
+        self.ram = make_ram(
+            mpn="RAM-PORT-1",
+            memory_type="DDR4",
+            capacity_gb=32,
+            module_count=2,
+            speed_mts=3600,
+            cas_latency=18,
+            height_mm=44,
+            has_heatspreader=True,
+            xmp_expo="XMP 2.0",
         )
         # A component without a spec must not break the export.
         Component.objects.create(
@@ -47,6 +65,7 @@ class DataPortabilityCommandTests(TestCase):
         self.assertEqual(Cpu.objects.count(), 1)
         self.assertEqual(Motherboard.objects.count(), 1)  # broken row was skipped
         self.assertEqual(Cooler.objects.count(), 1)
+        self.assertEqual(Ram.objects.count(), 1)
 
         cpu = Cpu.objects.select_related("cpu_spec__socket").get()
         self.assertEqual(cpu.cpu_spec.socket.name, "AM5")
@@ -64,3 +83,11 @@ class DataPortabilityCommandTests(TestCase):
             sorted(cooler.cooler_spec.supported_sockets.values_list("name", flat=True)),
             ["AM4", "AM5", "LGA1700"],
         )
+
+        ram = Ram.objects.select_related("ram_spec").get()
+        self.assertEqual(ram.ram_spec.memory_type, "DDR4")
+        self.assertEqual(ram.ram_spec.total_capacity_gb, 64)
+        self.assertEqual(ram.ram_spec.first_word_latency_ns, 10.0)
+        self.assertEqual(ram.ram_spec.height_mm, 44)
+        self.assertTrue(ram.ram_spec.has_heatspreader)
+        self.assertEqual(ram.ram_spec.xmp_expo, "XMP 2.0")

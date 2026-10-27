@@ -2,7 +2,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from components.tests.factories import make_cooler, make_cpu, make_motherboard
+from components.tests.factories import make_cooler, make_cpu, make_motherboard, make_ram
 
 
 class CpuApiTests(APITestCase):
@@ -104,3 +104,58 @@ class SocketApiTests(APITestCase):
         names = {row["name"] for row in response.data}
         self.assertIn("AM5", names)
         self.assertIn("LGA1700", names)  # seeded by the data migration
+
+
+class RamApiTests(APITestCase):
+    def setUp(self):
+        make_cpu()
+        make_ram(
+            mpn="RAM-API-1",
+            memory_type="DDR5",
+            capacity_gb=16,
+            module_count=2,
+            speed_mts=6000,
+            cas_latency=30,
+        )
+        make_ram(
+            mpn="RAM-API-2",
+            memory_type="DDR4",
+            capacity_gb=32,
+            module_count=1,
+            speed_mts=3200,
+            cas_latency=16,
+            height_mm=42,
+        )
+
+    def test_only_ram_is_returned_with_nested_specs(self):
+        response = self.client.get(reverse("get_ram"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+        self.assertEqual({row["mpn"] for row in response.data}, {"RAM-API-1", "RAM-API-2"})
+
+        first = next(row for row in response.data if row["mpn"] == "RAM-API-1")
+        self.assertEqual(first["specs"]["memory_type"], "DDR5")
+        self.assertEqual(first["specs"]["total_capacity_gb"], 32)
+        self.assertEqual(first["specs"]["first_word_latency_ns"], 10.0)
+
+    def test_filter_by_memory_type(self):
+        response = self.client.get(reverse("get_ram"), {"memory_type": "ddr5"})
+
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["mpn"], "RAM-API-1")
+
+    def test_filter_by_min_capacity_uses_kit_total(self):
+        response = self.client.get(reverse("get_ram"), {"min_capacity_gb": "64"})
+        self.assertEqual(response.data, [])
+
+        response = self.client.get(reverse("get_ram"), {"min_capacity_gb": "32"})
+        self.assertEqual({row["mpn"] for row in response.data}, {"RAM-API-1", "RAM-API-2"})
+
+    def test_invalid_min_capacity_returns_400(self):
+        response = self.client.get(reverse("get_ram"), {"min_capacity_gb": "lots"})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_filter_by_form_factor(self):
+        response = self.client.get(reverse("get_ram"), {"form_factor": "so-dimm"})
+        self.assertEqual(response.data, [])

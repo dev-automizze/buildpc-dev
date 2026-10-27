@@ -13,6 +13,8 @@ from .models import (
     CpuSpec,
     Motherboard,
     MotherboardSpec,
+    Ram,
+    RamSpec,
 )
 
 
@@ -27,6 +29,10 @@ class MotherboardSpecInline(admin.StackedInline):
 class CoolerSpecInline(admin.StackedInline):
     model = CoolerSpec
     filter_horizontal = ("supported_sockets",)
+
+
+class RamSpecInline(admin.StackedInline):
+    model = RamSpec
 
 
 # --- 1. THE MASTER COMPONENT ADMIN ---
@@ -138,4 +144,22 @@ class CoolerAdmin(ComponentAdmin):
     def save_model(self, request, obj, form, change):
         if not obj.pk:
             obj.category = "Cooler"
+        super().save_model(request, obj, form, change)
+
+
+# --- 5. THE RAM ADMIN ---
+@admin.register(Ram)
+class RamAdmin(ComponentAdmin):
+    list_display = ("brand", "model", "mpn", "msrp")
+    list_filter = ("brand",)
+    inlines = [RamSpecInline]
+
+    exclude = ("category",)
+
+    def has_add_permission(self, request):
+        return True
+
+    def save_model(self, request, obj, form, change):
+        if not obj.pk:
+            obj.category = "RAM"
         super().save_model(request, obj, form, change)

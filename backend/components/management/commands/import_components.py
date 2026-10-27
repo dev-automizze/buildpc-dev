@@ -59,6 +59,7 @@ class Command(BaseCommand):
             ("cpus.csv", ComponentCategory.CPU),
             ("motherboards.csv", ComponentCategory.MOTHERBOARD),
             ("coolers.csv", ComponentCategory.COOLER),
+            ("ram.csv", ComponentCategory.RAM),
         ]
         found = False
         for filename, category in targets:
@@ -69,5 +70,5 @@ class Command(BaseCommand):
 
         if not found:
             raise CommandError(
-                f"No cpus.csv, motherboards.csv, or coolers.csv found in {directory}"
+                f"No cpus.csv, motherboards.csv, coolers.csv, or ram.csv found in {directory}"
             )

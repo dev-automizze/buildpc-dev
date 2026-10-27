@@ -6,7 +6,14 @@ from django.conf import settings
 from django.test import TestCase
 
 from components.importer import ImportRowError, import_csv
-from components.models import Component, ComponentCategory, CoolerSpec, CpuSpec, MotherboardSpec
+from components.models import (
+    Component,
+    ComponentCategory,
+    CoolerSpec,
+    CpuSpec,
+    MotherboardSpec,
+    RamSpec,
+)
 
 CPU_HEADER = (
     "mpn,brand,model,msrp,socket,coreCount,threadCount,baseClockGhz,boostClockGhz,"
@@ -20,6 +27,12 @@ COOLER_HEADER = (
     "mpn,brand,model,msrp,coolerType,supportedSockets,tdpRatingWatts,heightMm,"
     "ramClearanceMm,radiatorSizeMm,radiatorThicknessMm,radiatorLengthMm,"
     "radiatorWidthMm,fanCount,fanSizeMm,noiseDbMax,weightG,powerConnector"
+)
+
+
+RAM_HEADER = (
+    "mpn,brand,model,msrp,memoryType,formFactor,capacityGb,moduleCount,speedMts,"
+    "casLatency,voltage,rank,ecc,registered,heightMm,hasHeatspreader,xmpExpo"
 )
 
 
@@ -222,3 +235,86 @@ class ImportCategoryTests(TestCase):
 
         self.assertEqual((success, errors), (2, []))
         self.assertEqual(CoolerSpec.objects.count(), 2)
+
+
+class RamImportTests(TestCase):
+    def test_imports_ram_kit_with_defaults(self):
+        rows = read_rows(
+            RAM_HEADER,
+            "RAM-1,Corsair,Vengeance,89.99,DDR5,DIMM,16,2,6000,30,1.35,Single,"
+            "false,false,35,true,EXPO",
+        )
+
+        success, errors = import_csv(rows, ComponentCategory.RAM)
+
+        self.assertEqual((success, errors), (1, []))
+        spec = RamSpec.objects.get()
+        self.assertEqual(spec.memory_type, "DDR5")
+        self.assertEqual(spec.form_factor, "DIMM")
+        self.assertEqual(spec.total_capacity_gb, 32)
+        self.assertEqual(spec.first_word_latency_ns, 10.0)
+        self.assertEqual(spec.rank, "Single")
+
+    def test_defaults_to_one_module_and_dimm(self):
+        rows = read_rows(
+            RAM_HEADER,
+            "RAM-2,Crucial,Basic,39.99,DDR5,,16,,4800,,,,,,,,false",
+        )
+
+        success, errors = import_csv(rows, ComponentCategory.RAM)
+
+        self.assertEqual((success, errors), (1, []))
+        spec = RamSpec.objects.get()
+        self.assertEqual(spec.module_count, 1)
+        self.assertEqual(spec.form_factor, "DIMM")
+        self.assertEqual(spec.rank, "")
+        self.assertFalse(spec.has_heatspreader)
+
+    def test_normalizes_so_dimm_and_rank_aliases(self):
+        rows = read_rows(
+            RAM_HEADER,
+            "RAM-3,Kingston,Impact,49.99,DDR5,so-dimm,16,2,5600,46,1.1,2R,"
+            "false,false,30,false,None",
+        )
+
+        success, errors = import_csv(rows, ComponentCategory.RAM)
+
+        self.assertEqual((success, errors), (1, []))
+        spec = RamSpec.objects.get()
+        self.assertEqual(spec.form_factor, "SO-DIMM")
+        self.assertEqual(spec.rank, "Dual")
+
+    def test_rejects_invalid_memory_type(self):
+        rows = read_rows(
+            RAM_HEADER,
+            "RAM-4,Brand,Model,49.99,DDR3,DIMM,8,2,1600,11,1.5,,false,false,"
+            "31,false,",
+        )
+
+        success, errors = import_csv(rows, ComponentCategory.RAM)
+
+        self.assertEqual(success, 0)
+        self.assertEqual(len(errors), 1)
+        self.assertIn("memoryType", errors[0])
+
+    def test_registered_memory_requires_ecc(self):
+        rows = read_rows(
+            RAM_HEADER,
+            "RAM-5,Samsung,Server,199.99,DDR5,DIMM,32,1,4800,40,1.1,Dual,"
+            "false,true,31,false,",
+        )
+
+        success, errors = import_csv(rows, ComponentCategory.RAM)
+
+        self.assertEqual(success, 0)
+        self.assertIn("registered", errors[0])
+
+    def test_rejects_zero_capacity_or_speed(self):
+        for field, row in (
+            ("capacityGb", "RAM-6,Brand,Model,49.99,DDR5,DIMM,0,2,6000,30,1.1,,false,false,35,false,"),
+            ("speedMts", "RAM-7,Brand,Model,49.99,DDR5,DIMM,16,2,0,30,1.1,,false,false,35,false,"),
+        ):
+            with self.subTest(field=field):
+                success, errors = import_csv(read_rows(RAM_HEADER, row), ComponentCategory.RAM)
+                self.assertEqual(success, 0)
+                self.assertIn(field, errors[0])

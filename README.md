@@ -151,7 +151,8 @@ cd backend
 ./venv/bin/python manage.py export_components       # writes backend/exports/
 ```
 
-`backend/exports/` contains `cpus.csv`, `motherboards.csv`, and `coolers.csv`.
+`backend/exports/` contains `cpus.csv`, `motherboards.csv`, `coolers.csv`, and
+`ram.csv`.
 Copy it with `scp`, `rsync`, a USB stick, or any file sync tool, then on the
 other machine:
 
