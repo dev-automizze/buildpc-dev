@@ -5,19 +5,28 @@
     <h2>Upload Component CSV Data</h2>
     <form action="." method="POST" enctype="multipart/form-data" style="margin-top: 20px; padding: 20px; background: #2c2c2c; border-radius: 5px;">
         {% csrf_token %}
-        
+
         <label style="color: white; display: block; margin-bottom: 5px;">Select Component Type:</label>
         <select name="component_type" required style="margin-bottom: 20px; padding: 5px; width: 200px;">
             <option value="CPU">CPU</option>
             <option value="Motherboard">Motherboard</option>
+            <option value="Cooler">Cooler</option>
         </select>
         <br>
 
         <input type="file" name="csv_file" required style="margin-bottom: 20px; color: white;">
         <br>
         <button type="submit" style="background-color: #417690; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">
-            Upload & Process
+            Upload &amp; Process
         </button>
     </form>
+
+    <div style="margin-top: 24px; color: #ddd; font-size: 13px; line-height: 1.6;">
+        <h3>Expected columns</h3>
+        <p><strong>CPU:</strong> mpn, brand, model, msrp, socket, coreCount, threadCount, baseClockGhz, boostClockGhz, tdpWatts, maxPowerWatts (optional), hasIntegratedGpu, includedCooler</p>
+        <p><strong>Motherboard:</strong> mpn, brand, model, msrp, chipset, socket, formFactor, memoryType, memorySlots, maxMemoryGb, m2Slots, sataSlots, hasWifi, pcieLanes, vrmPhases</p>
+        <p><strong>Cooler:</strong> mpn, brand, model, msrp, coolerType (Air/AIO/Passive), supportedSockets (comma-separated), tdpRatingWatts, heightMm, ramClearanceMm, radiatorSizeMm, radiatorThicknessMm, radiatorLengthMm, radiatorWidthMm, fanCount, fanSizeMm, noiseDbMax, weightG, powerConnector</p>
+        <p>Socket names are normalized automatically (e.g. "LGA 1700" becomes LGA1700).</p>
+    </div>
 </div>
 {% endblock %}

@@ -1,0 +1,3 @@
+mpn,brand,model,msrp,coolerType,supportedSockets,tdpRatingWatts,heightMm,ramClearanceMm,radiatorSizeMm,radiatorThicknessMm,radiatorLengthMm,radiatorWidthMm,fanCount,fanSizeMm,noiseDbMax,weightG,powerConnector
+COOLER-EXAMPLE-AIR,ExampleBrand,Example Tower Air,99.99,Air,"AM4, AM5, LGA1700, LGA1200",220,160,35,,,,,2,140,25.0,1200,4-pin PWM
+COOLER-EXAMPLE-AIO,ExampleBrand,Example 360 AIO,149.99,AIO,"AM4, AM5, LGA1700, LGA1851",300,,,360,30,398,120,3,120,23.0,1700,SATA
